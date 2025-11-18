@@ -1,3 +1,4 @@
+```mermaid
 graph TD
     %% 定義樣式
     classDef data fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
@@ -74,3 +75,4 @@ graph TD
     %% 連接各個子圖的關係
     TrainDS --> RawImg
     ValDS --> Validate
+```
