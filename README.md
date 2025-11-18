@@ -8,6 +8,7 @@ graph TD
     classDef storage fill:#e0e0e0,stroke:#424242,stroke-width:2px;
 
     subgraph Dataset_Preparation [資料準備與分割]
+        %% 這裡使用了雙引號包裹文字，避免括號造成語法錯誤
         RawData[("BUSI Dataset<br/>(Benign, Malignant, Normal)")]:::data
         Split[Split Data]:::proc
         TrainDS[Train Set]:::data
@@ -21,19 +22,18 @@ graph TD
     end
 
     subgraph Prototype_Construction [Few-Shot 原型建構]
-        TrainDS --> SampleProto[取樣: 每類 24 張]:::proc
-        SampleProto --> AvgProto[計算平均特徵 (Mean)]:::proc
-        AvgProto --> GlobalProto[生成全域 Prototype<br/>(Image + Mask)]:::data
+        TrainDS --> SampleProto["取樣: 每類 24 張"]:::proc
+        SampleProto --> AvgProto["計算平均特徵 (Mean)"]:::proc
+        AvgProto --> GlobalProto["生成全域 Prototype<br/>(Image + Mask)"]:::data
     end
 
     subgraph Preprocessing_Pipeline [超音波專用前處理]
-        %% 這裡詳細列出代碼中的 ultrasound_preprocess 步驟
         RawImg[原始影像] --> ZScore[Z-score Norm]:::proc
         ZScore --> Gamma[Gamma Correction]:::proc
         Gamma --> Log[Log Compression]:::proc
         Log --> CLAHE[CLAHE 增強]:::proc
         CLAHE --> Despeckle[Median Despeckle]:::proc
-        Despeckle --> Augs[Augmentations<br/>(Flip, Rotate, Jitter)]:::proc
+        Despeckle --> Augs["Augmentations<br/>(Flip, Rotate, Jitter)"]:::proc
         Augs --> ReadyImg[Ready Tensor]:::data
     end
 
@@ -43,13 +43,13 @@ graph TD
         ReadyImg --> ModelInput
         GlobalProto --> ModelInput
         
-        ModelInput(輸入: Query x5 + Prototype):::data --> MVS_Net[Wrapped MultiverSeg Net]:::model
+        ModelInput("輸入: Query x5 + Prototype"):::data --> MVS_Net[Wrapped MultiverSeg Net]:::model
         PreTrained -.-> MVS_Net
         
         MVS_Net --> Logits[輸出 Logits]
-        Logits --> CalcLoss[計算 Loss<br/>0.5*BCE + 0.5*Dice]:::proc
-        CalcLoss --> Backprop[Backprop & Optimizer<br/>(AdamW + AMP)]:::proc
-        Backprop --> Scheduler[Scheduler<br/>(CosineAnnealing)]:::proc
+        Logits --> CalcLoss["計算 Loss<br/>0.5*BCE + 0.5*Dice"]:::proc
+        CalcLoss --> Backprop["Backprop & Optimizer<br/>(AdamW + AMP)"]:::proc
+        Backprop --> Scheduler["Scheduler<br/>(CosineAnnealing)"]:::proc
     end
 
     subgraph Validation_Saving [驗證與儲存]
@@ -66,10 +66,10 @@ graph TD
 
     subgraph Final_Testing [測試階段]
         CheckDone -- Yes --> LoadBest[載入 best_mvs.pt]:::proc
-        TestDS --> TestPrep[前處理 (無 Augmentation)]:::proc
+        TestDS --> TestPrep["前處理 (無 Augmentation)"]:::proc
         TestPrep --> TestInfer[推論 Predict]:::model
         LoadBest --> TestInfer
-        TestInfer --> Metrics[計算指標<br/>Acc, Prec, Rec, IoU, Dice]:::data
+        TestInfer --> Metrics["計算指標<br/>Acc, Prec, Rec, IoU, Dice"]:::data
     end
 
     %% 連接各個子圖的關係
