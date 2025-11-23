@@ -1,58 +1,59 @@
 ```mermaid
 flowchart TD
 
-%%========================
-%%  DATASET & SAMPLES
-%%========================
-A1([Dataset Root<br>BUSI_with_GT]) --> A2[Scan Folder<br>build_samples()]
-A2 -->|benign/malignant/normal| A3((samples[]))
+%% ========================
+%%  DATASET / SAMPLES
+%% ========================
+A1[Dataset Root: BUSI_with_GT]
+A1 --> A2[build_samples]
+A2 --> A3[samples list]
 
-A3 --> A4[[split_samples()]]
-A4 -->|train idx| A5[[BUSIDataset<br>(train)]]
-A4 -->|val idx| A6[[BUSIDataset<br>(val)]]
-A5 --> D1[DataLoader(train)]
-A6 --> D2[DataLoader(val)]
+A3 --> A4[split_samples]
+A4 -->|train idx| A5[BUSIDataset Train]
+A4 -->|val idx| A6[BUSIDataset Val]
 
-%%========================
-%%  PROTOTYPE BUILDING
-%%========================
-D1 -. small loader .-> P1[[build_class_prototypes()]]
-P1 -->|per-class avg img/mask| P2((class_prototypes))
-P2 --> P3[[merge_prototypes()]]
-P3 -->|proto_img, proto_msk| M1
+A5 --> D1[Train DataLoader]
+A6 --> D2[Val DataLoader]
 
-%%========================
+%% ========================
+%%  PROTOTYPES
+%% ========================
+D1 -. small loader .-> P1[build_class_prototypes]
+P1 --> P2[class prototypes]
+P2 --> P3[merge_prototypes]
+P3 --> PM[proto_img and proto_msk]
+
+%% ========================
 %%  MODEL
-%%========================
-M1([WrappedMVS<br>MultiverSegNet])
-subgraph MVS[MultiverSeg Segmentation Pipeline]
-    direction TB
-    M1 --> M2[Forward(q5, proto_img, proto_msk)]
-    M2 --> M3((Pred Mask))
+%% ========================
+PM --> M1[WrappedMVS Model]
+subgraph MVS [MultiverSeg Pipeline]
+    M1 --> M2[Forward Pass]
+    M2 --> M3[Predicted Mask]
 end
 
-%%========================
-%%  TRAINING LOOP
-%%========================
+%% ========================
+%%  TRAINING
+%% ========================
 D1 --> T1[Training Loop]
-T1 --> T2[simulate_interactive_channels()<br>pos/neg/box/prev]
-T2 --> T3[Build q5 (5 channels)]
+T1 --> T2[simulate_interactive_channels]
+T2 --> T3[q5: 5 channel input]
 T3 --> M1
-M3 --> T4[Compute Loss<br>BCE + Dice]
+M3 --> T4[Compute Loss: BCE + Dice]
 T4 --> T5[Optimizer Step]
-T5 --> T6[CosineAnnealing Scheduler]
+T5 --> T6[Cosine Annealing LR]
 
-%%========================
-%%  VALIDATION LOOP
-%%========================
+%% ========================
+%%  VALIDATION
+%% ========================
 D2 --> V1[Validation Loop]
 V1 --> M1
 M3 --> V2[Dice Metric]
 
-%%========================
+%% ========================
 %%  CHECKPOINT
-%%========================
-V2 -->|best dice| C1[[Save best.pt]]
+%% ========================
+V2 -->|best dice| C1[Save best.pt]
 
 
 ```
