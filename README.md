@@ -1,78 +1,58 @@
 ```mermaid
-graph TD
-    %% 定義樣式
-    classDef data fill:#e1f5fe,stroke:#01579b,stroke-width:2px;
-    classDef proc fill:#fff3e0,stroke:#ff6f00,stroke-width:2px;
-    classDef model fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px;
-    classDef decision fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
-    classDef storage fill:#e0e0e0,stroke:#424242,stroke-width:2px;
+flowchart TD
 
-    subgraph Dataset_Preparation [資料準備與分割]
-        %% 這裡使用了雙引號包裹文字，避免括號造成語法錯誤
-        RawData[("BUSI Dataset<br/>(Benign, Malignant, Normal)")]:::data
-        Split[Split Data]:::proc
-        TrainDS[Train Set]:::data
-        ValDS[Val Set]:::data
-        TestDS[Test Set]:::data
+%%========================
+%%  DATASET & SAMPLES
+%%========================
+A1([Dataset Root<br>BUSI_with_GT]) --> A2[Scan Folder<br>build_samples()]
+A2 -->|benign/malignant/normal| A3((samples[]))
 
-        RawData --> Split
-        Split --> TrainDS
-        Split --> ValDS
-        Split --> TestDS
-    end
+A3 --> A4[[split_samples()]]
+A4 -->|train idx| A5[[BUSIDataset<br>(train)]]
+A4 -->|val idx| A6[[BUSIDataset<br>(val)]]
+A5 --> D1[DataLoader(train)]
+A6 --> D2[DataLoader(val)]
 
-    subgraph Prototype_Construction [Few-Shot 原型建構]
-        TrainDS --> SampleProto["取樣: 每類 24 張"]:::proc
-        SampleProto --> AvgProto["計算平均特徵 (Mean)"]:::proc
-        AvgProto --> GlobalProto["生成全域 Prototype<br/>(Image + Mask)"]:::data
-    end
+%%========================
+%%  PROTOTYPE BUILDING
+%%========================
+D1 -. small loader .-> P1[[build_class_prototypes()]]
+P1 -->|per-class avg img/mask| P2((class_prototypes))
+P2 --> P3[[merge_prototypes()]]
+P3 -->|proto_img, proto_msk| M1
 
-    subgraph Preprocessing_Pipeline [超音波專用前處理]
-        RawImg[原始影像] --> ZScore[Z-score Norm]:::proc
-        ZScore --> Gamma[Gamma Correction]:::proc
-        Gamma --> Log[Log Compression]:::proc
-        Log --> CLAHE[CLAHE 增強]:::proc
-        CLAHE --> Despeckle[Median Despeckle]:::proc
-        Despeckle --> Augs["Augmentations<br/>(Flip, Rotate, Jitter)"]:::proc
-        Augs --> ReadyImg[Ready Tensor]:::data
-    end
+%%========================
+%%  MODEL
+%%========================
+M1([WrappedMVS<br>MultiverSegNet])
+subgraph MVS[MultiverSeg Segmentation Pipeline]
+    direction TB
+    M1 --> M2[Forward(q5, proto_img, proto_msk)]
+    M2 --> M3((Pred Mask))
+end
 
-    subgraph Training_Loop [Fine-tuning 迴圈]
-        PreTrained[("Pre-trained Weights<br/>MultiverSeg_v1")]:::storage
-        
-        ReadyImg --> ModelInput
-        GlobalProto --> ModelInput
-        
-        ModelInput("輸入: Query x5 + Prototype"):::data --> MVS_Net[Wrapped MultiverSeg Net]:::model
-        PreTrained -.-> MVS_Net
-        
-        MVS_Net --> Logits[輸出 Logits]
-        Logits --> CalcLoss["計算 Loss<br/>0.5*BCE + 0.5*Dice"]:::proc
-        CalcLoss --> Backprop["Backprop & Optimizer<br/>(AdamW + AMP)"]:::proc
-        Backprop --> Scheduler["Scheduler<br/>(CosineAnnealing)"]:::proc
-    end
+%%========================
+%%  TRAINING LOOP
+%%========================
+D1 --> T1[Training Loop]
+T1 --> T2[simulate_interactive_channels()<br>pos/neg/box/prev]
+T2 --> T3[Build q5 (5 channels)]
+T3 --> M1
+M3 --> T4[Compute Loss<br>BCE + Dice]
+T4 --> T5[Optimizer Step]
+T5 --> T6[CosineAnnealing Scheduler]
 
-    subgraph Validation_Saving [驗證與儲存]
-        Scheduler --> EndEpoch{Epoch 結束?}:::decision
-        EndEpoch -- No --> ReadyImg
-        EndEpoch -- Yes --> Validate[驗證集評估]:::proc
-        Validate --> CheckBest{Dice > Best Dice?}:::decision
-        
-        CheckBest -- Yes --> SaveBest[("儲存 best_mvs.pt")]:::storage
-        CheckBest -- No --> CheckDone
-        SaveBest --> CheckDone{達到 Max Epochs?}:::decision
-        CheckDone -- No --> ReadyImg
-    end
+%%========================
+%%  VALIDATION LOOP
+%%========================
+D2 --> V1[Validation Loop]
+V1 --> M1
+M3 --> V2[Dice Metric]
 
-    subgraph Final_Testing [測試階段]
-        CheckDone -- Yes --> LoadBest[載入 best_mvs.pt]:::proc
-        TestDS --> TestPrep["前處理 (無 Augmentation)"]:::proc
-        TestPrep --> TestInfer[推論 Predict]:::model
-        LoadBest --> TestInfer
-        TestInfer --> Metrics["計算指標<br/>Acc, Prec, Rec, IoU, Dice"]:::data
-    end
+%%========================
+%%  CHECKPOINT
+%%========================
+V2 -->|best dice| C1[[Save best.pt]]
 
-    %% 連接各個子圖的關係
-    TrainDS --> RawImg
-    ValDS --> Validate
+
 ```
