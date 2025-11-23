@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
 
 %% ========================
@@ -41,7 +42,7 @@ M1 --> M2[FORWARD_PASS]:::node
 M2 --> M3[PREDICTED_MASK]:::node
 end
 
-note3[[MultiverSeg 前向運算，利用 q5 + prototype 輸出 segmentation mask]]:::note
+note3[[MultiverSeg 前向運算，使用 q5 + prototype 輸出 segmentation mask]]:::note
 M1 --- note3
 
 %% ========================
@@ -69,7 +70,7 @@ V1 --> M1
 M3 --> V2[COMPUTE_DICE]:::node
 end
 
-note5[[用 Dice 分數衡量 segmentation 成效]]:::note
+note5[[使用 Dice 分數評估 segmentation 成效]]:::note
 V1 --- note5
 
 %% ========================
@@ -86,3 +87,5 @@ C1 --- note6
 %% ========================
 classDef node fill:#e7f0ff,stroke:#4a78c2,stroke-width:1px,color:#000
 classDef note fill:#fff8dc,stroke:#c2a14a,stroke-width:1px,color:#333
+```
+
