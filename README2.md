@@ -1,57 +1,44 @@
 ```mermaid
 flowchart TD
 
-    %% ===============================
-    %% 原始 BUSI 影像 + Diffusion 生成
-    %% ===============================
-    A1[原始 BUSI Ultrasound 影像<br/>images + masks] --> A_pre[超音波前處理<br/>(CLAHE, log, despeckle)]
-    A2[Stable Diffusion Img2Img<br/>生成 500 張無 GT 影像] --> A3[灰階轉換 + resize]
+    %% ============== Data Preparation ==============
+    A1[BUSI Dataset: images + masks]
+    A2[Diffusion: generate 500 unlabeled images]
 
-    A_pre --> B1[建置 Training Samples]
-    A3 --> B2[生成影像資料集 (GenImageDataset)]
+    A1 --> A3[Ultrasound Preprocess: CLAHE, log, despeckle]
+    A2 --> A4[Gen Dataset: resize + normalize]
 
-    %% ===============================
-    %% Prototypes
-    %% ===============================
-    B1 --> C1[以 class 為單位取樣<br/>per_class=24]
-    C1 --> C2[平均每類 image + mask<br/>建 class-wise prototypes]
-    C2 --> C3[合併為 merged prototype<br/>(proto_img, proto_msk)]
+    %% ============== Prototype Building ==============
+    A3 --> B1[Sample per class: 24 images]
+    B1 --> B2[Compute class prototypes]
+    B2 --> B3[Merge prototypes into proto_img, proto_msk]
 
-    %% ===============================
-    %% Interactive Prompts
-    %% ===============================
-    B1 --> D1[取 batch (imgs, masks)]
-    D1 --> D2[模擬互動提示通道<br/>pos / neg / box / prev]
-    D2 --> D3[q5 = imgs + prompts<br/>形成 5-channel query]
+    %% ============== Interactive Prompts ==============
+    A3 --> C1[Load batch (img, mask)]
+    C1 --> C2[Simulate prompts: pos, neg, box, prev]
+    C2 --> C3[Form q5: img + 4 prompt channels]
 
-    %% ===============================
-    %% MultiverSeg
-    %% ===============================
-    C3 --> E1[MultiverSegNet<br/>(Encoder + Decoder)]
-    D3 --> E1
+    %% ============== MultiverSeg ==============
+    C3 --> D1[MultiverSeg forward pass]
+    B3 --> D1
 
-    E1 --> E2[前向推論<br/>logits → probs]
+    D1 --> D2[Predict logits → probs]
 
-    %% ===============================
-    %% Losses
-    %% ===============================
-    E2 --> F1[Supervised Loss<br/>(BCE + Dice)]
-    B2 --> F2[Unsupervised Entropy Loss<br/>每 3 iter 執行一次]
-    F1 --> G1[total_loss = sup + λ·unsup]
-    F2 --> G1
+    %% ============== Losses ==============
+    D2 --> E1[Supervised loss: BCE + Dice]
+    A4 --> E2[Entropy loss (every 3 steps)]
 
-    %% ===============================
-    %% Optimization
-    %% ===============================
-    G1 --> H1[AdamW + CosineAnnealingLR]
-    H1 --> H2[更新參數 (全層微調)]
+    E1 --> F1[Total loss = sup + lambda * unsup]
+    E2 --> F1
 
-    %% ===============================
-    %% Validation & Saving
-    %% ===============================
-    E2 --> I1[Validation Dice / Acc / Se / IoU]
-    I1 --> I2{ValDice > best?}
+    %% ============== Optimization ==============
+    F1 --> G1[AdamW + Cosine Scheduler]
+    G1 --> G2[Update model parameters]
 
-    I2 -->|Yes| I3[保存 gen_best.pt]
-    I2 -->|No| I4[不更新] 
+    %% ============== Validation & Saving ==============
+    D2 --> H1[Compute Val Dice, Acc, Se, IoU]
+    H1 --> H2{Is Val Dice best?}
+
+    H2 -->|Yes| H3[Save gen_best.pt]
+    H2 -->|No| H4[Continue training]
 ```
