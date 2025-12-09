@@ -1,3 +1,4 @@
+```mermaid
 flowchart TD
 
     %% ===============================
@@ -26,7 +27,7 @@ flowchart TD
     %% ===============================
     %% MultiverSeg
     %% ===============================
-    C3 --> E1[MultiverSegNet (Encoder + Decoder)]
+    C3 --> E1[MultiverSegNet<br/>(Encoder + Decoder)]
     D3 --> E1
 
     E1 --> E2[前向推論<br/>logits → probs]
@@ -53,4 +54,4 @@ flowchart TD
 
     I2 -->|Yes| I3[保存 gen_best.pt]
     I2 -->|No| I4[不更新] 
-
+```
